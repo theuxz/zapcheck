@@ -71,8 +71,8 @@ Deno.serve(async (req) => {
     }
 
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    const supabaseUrl = Deno.env.get("PROJECT_URL");
-    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!anthropicKey || !supabaseUrl || !serviceRoleKey) {
       return jsonResponse({ error: "Configuração do servidor incompleta" }, 500);
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022",
+        model: "claude-haiku-4-5",
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
       }),

@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import type { AnalyzeResponse } from "../types/message";
 
 const analyzeUrl = process.env.EXPO_PUBLIC_ANALYZE_FUNCTION_URL;
+console.log("URL:", analyzeUrl);
 
 export default function NewMessageScreen() {
   const router = useRouter();
