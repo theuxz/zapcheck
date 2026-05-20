@@ -24,7 +24,7 @@ O ZapCheck é um app mobile para profissionais autônomos que colam mensagens re
 ## Arquitetura
 
 ```mermaid
-graph LR
+flowchart LR
   A[App Expo] -->|POST texto| B[Edge Function]
   B -->|prompt| C[Claude Haiku]
   C -->|JSON| B
