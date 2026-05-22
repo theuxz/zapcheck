@@ -1,5 +1,3 @@
-// c:\Users\sonbl\zapcheck\supabase\functions\analyze\index.ts
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -54,6 +52,47 @@ function parseJsonFromAi(text: string): ExtractedFields {
   return JSON.parse(withoutFence) as ExtractedFields;
 }
 
+async function callAnthropicWithRetry(
+  anthropicKey: string,
+  prompt: string,
+  maxRetries = 4,
+): Promise<Response> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (response.ok) return response;
+
+    const errorBody = await response.json();
+    const isOverloaded =
+      errorBody?.error?.type === "overloaded_error" || response.status === 529;
+
+    if (isOverloaded && attempt < maxRetries) {
+      const waitMs = attempt * 2000; // 2s → 4s → 6s
+      console.log(`Anthropic overloaded. Tentativa ${attempt}/${maxRetries}. Aguardando ${waitMs}ms...`);
+      await new Promise((res) => setTimeout(res, waitMs));
+      continue;
+    }
+
+    // Qualquer outro erro ou esgotou retries
+    console.error("Anthropic API error:", JSON.stringify(errorBody));
+    throw new Error(isOverloaded ? "overloaded" : "api_error");
+  }
+
+  throw new Error("overloaded"); // nunca chega aqui, mas satisfaz o TypeScript
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -80,24 +119,15 @@ Deno.serve(async (req) => {
 
     const prompt = PROMPT_TEMPLATE.replace("{{TEXTO}}", texto.trim());
 
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorBody = await aiResponse.text();
-      console.error("Anthropic API error:", errorBody);
-      return jsonResponse({ error: "Falha ao analisar mensagem com IA" }, 502);
+    let aiResponse: Response;
+    try {
+      aiResponse = await callAnthropicWithRetry(anthropicKey, prompt);
+    } catch (err) {
+      const isOverloaded = err instanceof Error && err.message === "overloaded";
+      return jsonResponse(
+        { error: isOverloaded ? "API da IA sobrecarregada. Tente novamente em alguns segundos." : "Falha ao analisar mensagem com IA" },
+        502,
+      );
     }
 
     const aiData = await aiResponse.json();
