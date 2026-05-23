@@ -86,6 +86,10 @@ supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 
 *Na aba **Settings** da Edge Function no painel do Supabase, desative a opção "Verify JWT with legacy secret".*
 
+**Endpoint público:** https://eeypgbpgrwyjwkytjhtl.supabase.co/functions/v1/analyze  
+**Método:** POST  
+**Body:** `{ "texto": "mensagem aqui" }`
+
 ### 4. Variáveis de ambiente do app
 
 ```bash
